@@ -38,16 +38,49 @@ input, select {
     color: white;
 }
 
-select:invalid {
-    color: #64748b;
+/* 🔥 SWITCH */
+.toggle {
+    text-align: center;
+    margin-bottom: 10px;
 }
 
-option {
-    color: white;
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
 }
 
-option[value=""] {
-    color: #64748b;
+.switch input {
+    opacity: 0;
+}
+
+.slider {
+    position: absolute;
+    inset: 0;
+    background: #ef4444;
+    border-radius: 24px;
+    transition: 0.25s;
+}
+
+.slider:before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.25s;
+}
+
+.switch input:checked + .slider {
+    background: #22c55e;
+}
+
+.switch input:checked + .slider:before {
+    transform: translateX(22px);
 }
 
 .result {
@@ -77,8 +110,16 @@ option[value=""] {
 
 <div class="card">
     <h1>Grab Ores Ore Calculator</h1>
+    <h2 class="small">Exact Mode</h2>
 
-    <!-- 🔥 NEW RARITY -->
+    <!-- 🔥 TOGGLE -->
+    <div class="toggle">
+        <label class="switch">
+            <input type="checkbox" id="modeToggle" checked>
+            <span class="slider"></span>
+        </label>
+    </div>
+
     <select id="rarity" required>
         <option value="" disabled selected>Select Rarity</option>
         <option>Common</option>
@@ -94,7 +135,9 @@ option[value=""] {
         <option value="" disabled selected>Select rarity first</option>
     </select>
 
+    <!-- 🔥 MODE INPUTS -->
     <input id="weight" placeholder="Weight (kg)">
+    <input id="mps" placeholder="$/s (ex: 2.3m, 450k)" style="display:none;">
 
     <select id="merge" required>
         <option value="" disabled selected>Select Merge Tier</option>
@@ -102,6 +145,10 @@ option[value=""] {
 
     <select id="age" required>
         <option value="" disabled selected>Select Age</option>
+    </select>
+
+    <select id="targetAge" style="display:none;">
+        <option value="" disabled selected>Target Age</option>
     </select>
 
     <select id="mutation" required>
@@ -115,14 +162,26 @@ option[value=""] {
     <div class="result" id="result">$0/s</div>
     <div class="small" id="realResult">0/s</div>
 
-    <div class="warning">
+    <div class="warning" id="warning">
         ⚠️ Calculation may be slightly off due to weight differences.
     </div>
 </div>
 
 <script>
 
-// --- FULL ORES ---
+// --- PARSE K/M/B INPUT ---
+function parseMPS(val){
+    if(!val) return 0
+    val = val.toLowerCase().replace(/,/g,"").trim()
+
+    if(val.endsWith("k")) return parseFloat(val)*1e3
+    if(val.endsWith("m")) return parseFloat(val)*1e6
+    if(val.endsWith("b")) return parseFloat(val)*1e9
+
+    return parseFloat(val)
+}
+
+// --- ORES ---
 const ores = {
     Stone:{base:5,weight:6,exp:1.08,rarity:"Common"},
     Jade:{base:8,weight:5.5,exp:1.08,rarity:"Common"},
@@ -177,7 +236,6 @@ const ores = {
     Celestite:{base:32000,weight:13,exp:1.24,rarity:"Divine"},
     Royalite:{base:38000,weight:13.5,exp:1.25,rarity:"Divine"}
 }
-
 // --- MERGES ---
 const merges = [
     ["Base",1],["Shiny",2],["Polished",5],["Refined",8],
@@ -188,87 +246,134 @@ const merges = [
 // --- AGES ---
 const ages = [1,1.2,1.4,1.6,1.8,2,2.2,2.4,2.6,2.8]
 
-const raritySelect = document.getElementById("rarity")
-const oreSelect = document.getElementById("ore")
+// populate merge
+const mergeSelect = document.getElementById("merge")
+merges.forEach(m=>{
+    let opt=document.createElement("option")
+    opt.value=m[1]
+    opt.textContent=m[0]
+    mergeSelect.appendChild(opt)
+})
 
-// 🔥 FILTER LOGIC
-raritySelect.addEventListener("input", () => {
-    oreSelect.innerHTML = `<option value="" disabled selected>Select Ore</option>`
+// populate age + target age
+const ageSelect = document.getElementById("age")
+const targetAgeSelect = document.getElementById("targetAge")
 
-    let rarity = raritySelect.value
+ages.forEach((a,i)=>{
+    let opt=document.createElement("option")
+    opt.value=a
+    opt.textContent="Age "+(i+1)
+    ageSelect.appendChild(opt)
 
-    Object.entries(ores).forEach(([name, data])=>{
-        if (data.rarity === rarity){
-            let opt = document.createElement("option")
-            opt.value = name
-            opt.textContent = name
+    let opt2=document.createElement("option")
+    opt2.value=a
+    opt2.textContent="Age "+(i+1)
+    targetAgeSelect.appendChild(opt2)
+})
+
+// rarity filter
+const raritySelect=document.getElementById("rarity")
+const oreSelect=document.getElementById("ore")
+
+raritySelect.addEventListener("input",()=>{
+    oreSelect.innerHTML=`<option value="" disabled selected>Select Ore</option>`
+    Object.entries(ores).forEach(([name,data])=>{
+        if(data.rarity===raritySelect.value){
+            let opt=document.createElement("option")
+            opt.value=name
+            opt.textContent=name
             oreSelect.appendChild(opt)
         }
     })
 })
 
-// MERGE + AGE populate unchanged
-const mergeSelect = document.getElementById("merge")
-merges.forEach(m=>{
-    let opt = document.createElement("option")
-    opt.value = m[1]
-    opt.textContent = m[0]
-    mergeSelect.appendChild(opt)
-})
+// toggle
+const toggle=document.getElementById("modeToggle")
+const weightInput=document.getElementById("weight")
+const mpsInput=document.getElementById("mps")
+const warning=document.getElementById("warning")
 
-const ageSelect = document.getElementById("age")
-ages.forEach((a,i)=>{
-    let opt = document.createElement("option")
-    opt.value = a
-    opt.textContent = "Age " + (i+1)
-    ageSelect.appendChild(opt)
-})
+function updateMode(){
+    if(toggle.checked){
+        weightInput.style.display="none"
+        mpsInput.style.display="block"
+        targetAgeSelect.style.display="block"
+        warning.style.display="none"
+    } else {
+        weightInput.style.display="block"
+        mpsInput.style.display="none"
+        targetAgeSelect.style.display="none"
+        warning.style.display="block"
+    }
+}
+toggle.addEventListener("change",updateMode)
+updateMode()
 
-// --- FORMAT + CALC unchanged ---
+// format
 function formatNumber(num){
     let suffix = ""
     let value = num
 
-    if (num >= 1e9){value = num / 1e9; suffix = "B/s"}
-    else if (num >= 1e6){value = num / 1e6; suffix = "M/s"}
-    else if (num >= 1e3){value = num / 1e3; suffix = "K/s"}
-    else return Math.round(num) + "/s"
+    if (num >= 1e9){
+        value = num / 1e9
+        suffix = "B/s"
+    } else if (num >= 1e6){
+        value = num / 1e6
+        suffix = "M/s"
+    } else if (num >= 1e3){
+        value = num / 1e3
+        suffix = "K/s"
+    } else {
+        return Math.floor(num + 0.5) + "/s"
+    }
 
-    value = Math.round(value * 100) / 100
-    let decimals = value < 10 ? 2 : 1
-    let formatted = value.toFixed(decimals).replace(/\.?0+$/, "")
+    let decimals
+    if (value < 10) decimals = 2
+    else decimals = 1
+
+    let pow = Math.pow(10, decimals)
+
+    // 🔥 GAME-STYLE FLOORING (NOT ROUNDING)
+    let formatted = Math.floor(value * pow) / pow
+
+    formatted = formatted.toFixed(decimals)
+    formatted = formatted.replace(/\.?0+$/, "")
 
     return formatted + suffix
 }
 
+// calc
 function calculate(){
-    if (!oreSelect.value || !mergeSelect.value || !ageSelect.value || !document.getElementById("mutation").value){
-        result.innerText = "$0/s"
-        realResult.innerText = "0/s"
-        return
+
+    const age=parseFloat(ageSelect.value)
+    const mutation=parseFloat(document.getElementById("mutation").value)
+    const merge=parseFloat(mergeSelect.value)
+
+    if(!age||!merge||!mutation) return
+
+    let resultVal=0
+
+    if(toggle.checked){
+        const input=parseMPS(mpsInput.value)
+        const target=parseFloat(targetAgeSelect.value)
+        if(!input||!target) return
+        resultVal=input*(target/age)
+    } else {
+        const ore=ores[oreSelect.value]
+        if(!ore) return
+        const weight=parseFloat(weightInput.value)||ore.weight
+        let mult=Math.pow(weight/ore.weight,ore.exp)
+        mult=Math.round(mult*100)/100
+        resultVal=ore.base*mult*merge*age*mutation
     }
 
-    const ore = ores[oreSelect.value]
-    const weight = parseFloat(document.getElementById("weight").value) || ore.weight
-    const merge = parseFloat(mergeSelect.value)
-    const age = parseFloat(ageSelect.value)
-    const mutation = parseFloat(document.getElementById("mutation").value)
-
-    let real = Math.pow(weight / ore.weight, ore.exp)
-    let weightMult = Math.round(real * 100) / 100
-
-    let resultVal = ore.base * weightMult * merge * age * mutation
-
-    result.innerText = "$" + formatNumber(resultVal)
-    realResult.innerText = "$" + Math.round(resultVal).toLocaleString() + "/s"
+    result.innerText="$"+formatNumber(resultVal)
+    realResult.innerText="$"+Math.round(resultVal).toLocaleString()+"/s"
 }
 
-document.querySelectorAll("input, select").forEach(el=>{
-    el.addEventListener("input", calculate)
+document.querySelectorAll("input,select").forEach(el=>{
+    el.addEventListener("input",calculate)
 })
-
-calculate()
-
 </script>
 
 </body>
