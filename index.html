@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Grab Ores Ore Calculator</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg, #0f172a, #020617);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.card {
+    background: #0f172a;
+    padding: 30px;
+    border-radius: 20px;
+    width: 400px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #38bdf8;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 10px;
+    border: none;
+    background: #1e293b;
+    color: white;
+}
+
+select:invalid {
+    color: #64748b;
+}
+
+option {
+    color: white;
+}
+
+option[value=""] {
+    color: #64748b;
+}
+
+.result {
+    margin-top: 20px;
+    font-size: 26px;
+    text-align: center;
+    color: #22c55e;
+}
+
+.small {
+    text-align: center;
+    margin-top: 5px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.warning {
+    margin-top: 15px;
+    font-size: 13px;
+    text-align: center;
+    color: #ef4444;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <h1>Grab Ores Ore Calculator</h1>
+
+    <!-- 🔥 NEW RARITY -->
+    <select id="rarity" required>
+        <option value="" disabled selected>Select Rarity</option>
+        <option>Common</option>
+        <option>Rare</option>
+        <option>Epic</option>
+        <option>Legendary</option>
+        <option>Mythic</option>
+        <option>Secret</option>
+        <option>Divine</option>
+    </select>
+
+    <select id="ore" required>
+        <option value="" disabled selected>Select rarity first</option>
+    </select>
+
+    <input id="weight" placeholder="Weight (kg)">
+
+    <select id="merge" required>
+        <option value="" disabled selected>Select Merge Tier</option>
+    </select>
+
+    <select id="age" required>
+        <option value="" disabled selected>Select Age</option>
+    </select>
+
+    <select id="mutation" required>
+        <option value="" disabled selected>Select Mutation</option>
+        <option value="1">None</option>
+        <option value="1.2">Gold</option>
+        <option value="2.25">Diamond</option>
+        <option value="3.5">Rainbow</option>
+    </select>
+
+    <div class="result" id="result">$0/s</div>
+    <div class="small" id="realResult">0/s</div>
+
+    <div class="warning">
+        ⚠️ Calculation may be slightly off due to weight differences.
+    </div>
+</div>
+
+<script>
+
+// --- FULL ORES ---
+const ores = {
+    Stone:{base:5,weight:6,exp:1.08,rarity:"Common"},
+    Jade:{base:8,weight:5.5,exp:1.08,rarity:"Common"},
+    Azure:{base:10,weight:5.5,exp:1.08,rarity:"Common"},
+    Ember:{base:13,weight:5.75,exp:1.09,rarity:"Common"},
+    Marble:{base:15,weight:5.75,exp:1.09,rarity:"Common"},
+    Silver:{base:18,weight:6,exp:1.09,rarity:"Common"},
+    Rocky:{base:21,weight:7,exp:1.09,rarity:"Common"},
+
+    Amber:{base:28,weight:4.5,exp:1.1,rarity:"Rare"},
+    Ruby:{base:39,weight:4.75,exp:1.1,rarity:"Rare"},
+    Opal:{base:55,weight:4.25,exp:1.11,rarity:"Rare"},
+    Topaz:{base:78,weight:5,exp:1.11,rarity:"Rare"},
+    Peridot:{base:110,weight:4.75,exp:1.11,rarity:"Rare"},
+    Sapphire:{base:115,weight:4.75,exp:1.11,rarity:"Rare"},
+    Amethyst:{base:155,weight:4.75,exp:1.12,rarity:"Rare"},
+    Rosalite:{base:170,weight:4.5,exp:1.12,rarity:"Rare"},
+    Levanto:{base:175,weight:4.5,exp:1.12,rarity:"Rare"},
+
+    Glowgem:{base:182,weight:3.8,exp:1.12,rarity:"Epic"},
+    Pinkal:{base:242,weight:3.9,exp:1.12,rarity:"Epic"},
+    Redite:{base:280,weight:4,exp:1.12,rarity:"Epic"},
+    Aquamarine:{base:330,weight:4.2,exp:1.13,rarity:"Epic"},
+    Garnet:{base:440,weight:4.6,exp:1.13,rarity:"Epic"},
+    Violet:{base:583,weight:4.3,exp:1.13,rarity:"Epic"},
+    Obsidian:{base:770,weight:7.5,exp:1.14,rarity:"Epic"},
+    Teardrop:{base:900,weight:4.5,exp:1.14,rarity:"Epic"},
+    Diamond:{base:1045,weight:4.8,exp:1.14,rarity:"Epic"},
+
+    Tourmaline:{base:1250,weight:6.2,exp:1.15,rarity:"Legendary"},
+    Crystal:{base:1650,weight:6,exp:1.15,rarity:"Legendary"},
+    Carnite:{base:1900,weight:6.4,exp:1.15,rarity:"Legendary"},
+    Bloodstone:{base:2150,weight:6.8,exp:1.16,rarity:"Legendary"},
+    Emerald:{base:2800,weight:6.5,exp:1.16,rarity:"Legendary"},
+    Verdite:{base:3200,weight:6.75,exp:1.16,rarity:"Legendary"},
+    Goldstone:{base:3700,weight:7,exp:1.17,rarity:"Legendary"},
+    Coinite:{base:4200,weight:7.5,exp:1.17,rarity:"Legendary"},
+
+    Cloverite:{base:4800,weight:8,exp:1.18,rarity:"Mythic"},
+    Poopite:{base:6300,weight:7.5,exp:1.18,rarity:"Mythic"},
+    Goldrite:{base:8200,weight:9,exp:1.19,rarity:"Mythic"},
+    Prismite:{base:10700,weight:8.5,exp:1.19,rarity:"Mythic"},
+    Coreite:{base:12000,weight:9.5,exp:1.2,rarity:"Mythic"},
+    Veilstone:{base:13500,weight:9.75,exp:1.2,rarity:"Mythic"},
+    Crimite:{base:14000,weight:10,exp:1.2,rarity:"Mythic"},
+
+    Voidite:{base:15500,weight:10,exp:1.2,rarity:"Secret"},
+    Frostite:{base:18500,weight:10.5,exp:1.21,rarity:"Secret"},
+    Nightrite:{base:24000,weight:11,exp:1.22,rarity:"Secret"},
+    Heartite:{base:28000,weight:11.5,exp:1.23,rarity:"Secret"},
+
+    Celestite:{base:32000,weight:13,exp:1.24,rarity:"Divine"},
+    Royalite:{base:38000,weight:13.5,exp:1.25,rarity:"Divine"}
+}
+
+// --- MERGES ---
+const merges = [
+    ["Base",1],["Shiny",2],["Polished",5],["Refined",8],
+    ["Enhanced",10],["Elite",13],["Ascended",15],
+    ["Prime",17],["Apex",21],["Omega",25]
+]
+
+// --- AGES ---
+const ages = [1,1.2,1.4,1.6,1.8,2,2.2,2.4,2.6,2.8]
+
+const raritySelect = document.getElementById("rarity")
+const oreSelect = document.getElementById("ore")
+
+// 🔥 FILTER LOGIC
+raritySelect.addEventListener("input", () => {
+    oreSelect.innerHTML = `<option value="" disabled selected>Select Ore</option>`
+
+    let rarity = raritySelect.value
+
+    Object.entries(ores).forEach(([name, data])=>{
+        if (data.rarity === rarity){
+            let opt = document.createElement("option")
+            opt.value = name
+            opt.textContent = name
+            oreSelect.appendChild(opt)
+        }
+    })
+})
+
+// MERGE + AGE populate unchanged
+const mergeSelect = document.getElementById("merge")
+merges.forEach(m=>{
+    let opt = document.createElement("option")
+    opt.value = m[1]
+    opt.textContent = m[0]
+    mergeSelect.appendChild(opt)
+})
+
+const ageSelect = document.getElementById("age")
+ages.forEach((a,i)=>{
+    let opt = document.createElement("option")
+    opt.value = a
+    opt.textContent = "Age " + (i+1)
+    ageSelect.appendChild(opt)
+})
+
+// --- FORMAT + CALC unchanged ---
+function formatNumber(num){
+    let suffix = ""
+    let value = num
+
+    if (num >= 1e9){value = num / 1e9; suffix = "B/s"}
+    else if (num >= 1e6){value = num / 1e6; suffix = "M/s"}
+    else if (num >= 1e3){value = num / 1e3; suffix = "K/s"}
+    else return Math.round(num) + "/s"
+
+    value = Math.round(value * 100) / 100
+    let decimals = value < 10 ? 2 : 1
+    let formatted = value.toFixed(decimals).replace(/\.?0+$/, "")
+
+    return formatted + suffix
+}
+
+function calculate(){
+    if (!oreSelect.value || !mergeSelect.value || !ageSelect.value || !document.getElementById("mutation").value){
+        result.innerText = "$0/s"
+        realResult.innerText = "0/s"
+        return
+    }
+
+    const ore = ores[oreSelect.value]
+    const weight = parseFloat(document.getElementById("weight").value) || ore.weight
+    const merge = parseFloat(mergeSelect.value)
+    const age = parseFloat(ageSelect.value)
+    const mutation = parseFloat(document.getElementById("mutation").value)
+
+    let real = Math.pow(weight / ore.weight, ore.exp)
+    let weightMult = Math.round(real * 100) / 100
+
+    let resultVal = ore.base * weightMult * merge * age * mutation
+
+    result.innerText = "$" + formatNumber(resultVal)
+    realResult.innerText = "$" + Math.round(resultVal).toLocaleString() + "/s"
+}
+
+document.querySelectorAll("input, select").forEach(el=>{
+    el.addEventListener("input", calculate)
+})
+
+calculate()
+
+</script>
+
+</body>
+</html>
