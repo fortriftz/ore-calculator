@@ -294,17 +294,22 @@ const mpsInput=document.getElementById("mps")
 const warning=document.getElementById("warning")
 
 function updateMode(){
-    if(toggle.checked){
-        weightInput.style.display="none"
-        mpsInput.style.display="block"
-        targetAgeSelect.style.display="block"
-        warning.style.display="none"
-    } else {
-        weightInput.style.display="block"
-        mpsInput.style.display="none"
-        targetAgeSelect.style.display="none"
-        warning.style.display="block"
-    }
+
+    const isExact = toggle.checked
+
+    // inputs
+    weightInput.style.display = isExact ? "none" : "block"
+    mpsInput.style.display = isExact ? "block" : "none"
+    targetAgeSelect.style.display = isExact ? "block" : "none"
+
+    // dropdowns to hide in exact mode
+    raritySelect.style.display = isExact ? "none" : "block"
+    oreSelect.style.display = isExact ? "none" : "block"
+    mergeSelect.style.display = isExact ? "none" : "block"
+    document.getElementById("mutation").style.display = isExact ? "none" : "block"
+
+    // warning
+    warning.style.display = isExact ? "none" : "block"
 }
 toggle.addEventListener("change",updateMode)
 updateMode()
@@ -345,30 +350,36 @@ function formatNumber(num){
 // calc
 function calculate(){
 
-    const age=parseFloat(ageSelect.value)
-    const mutation=parseFloat(document.getElementById("mutation").value)
-    const merge=parseFloat(mergeSelect.value)
+    const age = parseFloat(ageSelect.value)
+    if(!age) return
 
-    if(!age||!merge||!mutation) return
-
-    let resultVal=0
+    let resultVal = 0
 
     if(toggle.checked){
-        const input=parseMPS(mpsInput.value)
-        const target=parseFloat(targetAgeSelect.value)
-        if(!input||!target) return
-        resultVal=input*(target/age)
+        const input = parseMPS(mpsInput.value)
+        const target = parseFloat(targetAgeSelect.value)
+        if(!input || !target) return
+
+        resultVal = input * (target / age)
+
     } else {
-        const ore=ores[oreSelect.value]
+        const merge = parseFloat(mergeSelect.value)
+        const mutation = parseFloat(document.getElementById("mutation").value)
+        if(!merge || !mutation) return
+
+        const ore = ores[oreSelect.value]
         if(!ore) return
-        const weight=parseFloat(weightInput.value)||ore.weight
-        let mult=Math.pow(weight/ore.weight,ore.exp)
-        mult=Math.round(mult*100)/100
-        resultVal=ore.base*mult*merge*age*mutation
+
+        const weight = parseFloat(weightInput.value) || ore.weight
+
+        let mult = Math.pow(weight / ore.weight, ore.exp)
+        mult = Math.round(mult * 100) / 100
+
+        resultVal = ore.base * mult * merge * age * mutation
     }
 
-    result.innerText="$"+formatNumber(resultVal)
-    realResult.innerText="$"+Math.round(resultVal).toLocaleString()+"/s"
+    result.innerText = "$" + formatNumber(resultVal)
+    realResult.innerText = "$" + Math.round(resultVal).toLocaleString() + "/s"
 }
 
 document.querySelectorAll("input,select").forEach(el=>{
